@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample Business Documents — Knowledge Graph</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --panel-bg: #111827;
+            --border-color: #1f2937;
+            --text-color: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent-color: #3b82f6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+        }
+
+        #network-container {
+            flex: 1;
+            height: 100%;
+            position: relative;
+        }
+
+        #network {
+            width: 100%;
+            height: 100%;
+        }
+
+        #sidebar {
+            width: 380px;
+            background-color: var(--panel-bg);
+            border-left: 1px solid var(--border-color);
+            height: 100%;
+            z-index: 10;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .search-box {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 14px;
+            background-color: #1f2937;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent-color);
+        }
+
+        .details-panel {
+            padding: 24px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .welcome-msg {
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 100px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .concept-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .concept-meta {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--accent-color);
+        }
+
+        .info-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            margin-top: 20px;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .info-value {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .tag-pill {
+            display: inline-block;
+            background-color: #1f2937;
+            color: var(--text-muted);
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            margin-right: 6px;
+            margin-bottom: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background-color: rgba(17, 24, 39, 0.95);
+            border: 1px solid var(--border-color);
+            padding: 14px;
+            border-radius: 12px;
+            z-index: 5;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .legend-title {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            margin-right: 8px;
+        }
+
+        .stats-bar {
+            padding: 12px 20px;
+            border-top: 1px solid var(--border-color);
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            gap: 16px;
+        }
+
+        .stats-bar span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="network-container">
+        <div id="network"></div>
+        
+        <div class="legend">
+            <div class="legend-title">Categories</div>
+            <div id="legend-items"></div>
+        </div>
+    </div>
+
+    <div id="sidebar">
+        <div class="search-box">
+            <input type="text" id="search" class="search-input" placeholder="Search concepts or tags...">
+        </div>
+        <div class="details-panel" id="details">
+            <div class="welcome-msg">
+                <h3>Sample Business Documents</h3>
+                <p style="margin-top: 10px;">Click any concept node in the network to view its structured detail panel and relationships.</p>
+            </div>
+        </div>
+        <div class="stats-bar">
+            <span id="stats-nodes"></span>
+            <span id="stats-edges"></span>
+            <span id="stats-groups"></span>
+        </div>
+    </div>
+
+    <script>
+        const nodesData = [
+  {
+    "id": "introduction/section-3-sample-business-documents-introduction.md",
+    "label": "Section 3: Sample Business Documents Introduction",
+    "group": "introduction",
+    "title": "Section 3: Sample Business Documents Introduction",
+    "type": "Section",
+    "description": "This section introduces a collection of various sample business documents, providing examples and guidance for their creation.",
+    "tags": [
+      "business documents",
+      "samples",
+      "section introduction",
+      "document types"
+    ],
+    "pages": "1-1"
+  },
+  {
+    "id": "document-types/abstracts-definition-and-types.md",
+    "label": "Abstracts: Definition and Types",
+    "group": "document-types",
+    "title": "Abstracts: Definition and Types",
+    "type": "Definition",
+    "description": "This unit defines abstracts as summaries of larger documents and explains the two main types: descriptive and informative.",
+    "tags": [
+      "abstracts",
+      "summaries",
+      "descriptive abstract",
+      "informative abstract",
+      "report components"
+    ],
+    "pages": "2-3"
+  },
+  {
+    "id": "document-examples/sample-abstract-u-s-air-force-research.md",
+    "label": "Sample Abstract: U.S. Air Force Research",
+    "group": "document-examples",
+    "title": "Sample Abstract: U.S. Air Force Research",
+    "type": "Example",
+    "description": "This is an example of an abstract detailing research on occupational and training requirements information by the U.S. Air Force Research Laboratory.",
+    "tags": [
+      "abstract",
+      "example",
+      "us air force",
+      "research",
+      "occupational requirements"
+    ],
+    "pages": "3-3"
+  },
+  {
+    "id": "document-examples/sample-summary-gray-wolf-experimental-populations.md",
+    "label": "Sample Summary: Gray Wolf Experimental Populations",
+    "group": "document-examples",
+    "title": "Sample Summary: Gray Wolf Experimental Populations",
+    "type": "Example",
+    "description": "This summary discusses special rules established by the U.S. Fish and Wildlife Service for gray wolf experimental populations.",
+    "tags": [
+      "summary",
+      "example",
+      "gray wolves",
+      "wildlife service",
+      "environmental policy"
+    ],
+    "pages": "3-3"
+  },
+  {
+    "id": "business-letters/acceptance-letter-purpose-and-tips.md",
+    "label": "Acceptance Letter: Purpose and Tips",
+    "group": "business-letters",
+    "title": "Acceptance Letter: Purpose and Tips",
+    "type": "Guide",
+    "description": "This unit defines an acceptance letter, its common uses, and provides tips for writing one, accompanied by an example figure.",
+    "tags": [
+      "acceptance letter",
+      "business letter",
+      "employment offer",
+      "writing tips",
+      "formal communication"
+    ],
+    "pages": "4-5"
+  },
+  {
+    "id": "business-letters/acknowledgment-letter-purpose-and-tips.md",
+    "label": "Acknowledgment Letter: Purpose and Tips",
+    "group": "business-letters",
+    "title": "Acknowledgment Letter: Purpose and Tips",
+    "type": "Guide",
+    "description": "This unit defines an acknowledgment letter as a response clarifying expectations and offers tips for writing it promptly and courteously.",
+    "tags": [
+      "acknowledgment letter",
+      "business letter",
+      "response letter",
+      "writing tips",
+      "formal communication"
+    ],
+    "pages": "6-7"
+  },
+  {
+    "id": "business-letters/adjustment-letter-responding-to-complaints.md",
+    "label": "Adjustment Letter: Responding to Complaints",
+    "group": "business-letters",
+    "title": "Adjustment Letter: Responding to Complaints",
+    "type": "Guide",
+    "description": "This unit explains adjustment letters as responses to complaints, outlining their purpose as legal documents and providing writing tips.",
+    "tags": [
+      "adjustment letter",
+      "complaint response",
+      "business letter",
+      "legal document",
+      "customer service"
+    ],
+    "pages": "8-9"
+  },
+  {
+    "id": "business-letters/announcement-letter-style-and-tips.md",
+    "label": "Announcement Letter: Style and Tips",
+    "group": "business-letters",
+    "title": "Announcement Letter: Style and Tips",
+    "type": "Guide",
+    "description": "This unit describes announcement letters, emphasizing a straightforward style and offering tips for positive and motivating communication.",
+    "tags": [
+      "announcement letter",
+      "business letter",
+      "corporate communication",
+      "writing tips",
+      "promotional"
+    ],
+    "pages": "10-11"
+  },
+  {
+    "id": "corporate-documents/annual-report-definition-and-key-sections.md",
+    "label": "Annual Report: Definition and Key Sections",
+    "group": "corporate-documents",
+    "title": "Annual Report: Definition and Key Sections",
+    "type": "Guide",
+    "description": "This unit defines annual reports as documents disclosing corporate information to shareholders and lists required sections for public companies.",
+    "tags": [
+      "annual report",
+      "corporate finance",
+      "sec filing",
+      "form 10-k",
+      "shareholders"
+    ],
+    "pages": "12-13"
+  },
+  {
+    "id": "corporate-documents/annual-report-illustrative-figures.md",
+    "label": "Annual Report: Illustrative Figures",
+    "group": "corporate-documents",
+    "title": "Annual Report: Illustrative Figures",
+    "type": "Visual Aid",
+    "description": "This unit presents various figures illustrating components of an annual report, including cover page, table of contents, and key sections.",
+    "tags": [
+      "annual report",
+      "figures",
+      "examples",
+      "visuals",
+      "corporate documents"
+    ],
+    "pages": "14-18"
+  },
+  {
+    "id": "business-letters/application-letter-structure-and-content.md",
+    "label": "Application Letter: Structure and Content",
+    "group": "business-letters",
+    "title": "Application Letter: Structure and Content",
+    "type": "Guide",
+    "description": "This unit outlines the essential elements of an application letter, including stating purpose, qualifications, and desired response.",
+    "tags": [
+      "application letter",
+      "job application",
+      "cover letter",
+      "writing tips",
+      "employment"
+    ],
+    "pages": "19-20"
+  },
+  {
+    "id": "marketing-materials/brochures-definition-and-types.md",
+    "label": "Brochures: Definition and Types",
+    "group": "marketing-materials",
+    "title": "Brochures: Definition and Types",
+    "type": "Guide",
+    "description": "This unit defines brochures as advertising tools and describes different types, such as leave-behind and point-of-sale brochures.",
+    "tags": [
+      "brochures",
+      "marketing",
+      "advertising",
+      "product promotion",
+      "business communication"
+    ],
+    "pages": "21-23"
+  },
+  {
+    "id": "marketing-materials/brochures-illustrative-figures.md",
+    "label": "Brochures: Illustrative Figures",
+    "group": "marketing-materials",
+    "title": "Brochures: Illustrative Figures",
+    "type": "Visual Aid",
+    "description": "This unit provides multiple figures illustrating different examples and layouts of brochures for various business purposes.",
+    "tags": [
+      "brochures",
+      "figures",
+      "examples",
+      "visuals",
+      "marketing"
+    ],
+    "pages": "24-25"
+  },
+  {
+    "id": "business-documents/brochure-examples.md",
+    "label": "Brochure Examples",
+    "group": "business-documents",
+    "title": "Brochure Examples",
+    "type": "Figure",
+    "description": "Presents figures illustrating different brochure designs and layouts for business communication.",
+    "tags": [
+      "brochure",
+      "design",
+      "marketing",
+      "figure",
+      "example"
+    ],
+    "pages": "24-25"
+  },
+  {
+    "id": "business-letters/business-letter-overview-and-key-parts.md",
+    "label": "Business Letter: Overview and Key Parts",
+    "group": "business-letters",
+    "title": "Business Letter: Overview and Key Parts",
+    "type": "Section",
+    "description": "Defines a business letter and outlines its essential components, including address, dateline, and salutation.",
+    "tags": [
+      "business letter",
+      "components",
+      "format",
+      "correspondence",
+      "introduction"
+    ],
+    "pages": "26-28"
+  },
+  {
+    "id": "business-letters/business-letter-writing-style-guidelines.md",
+    "label": "Business Letter Writing Style Guidelines",
+    "group": "business-letters",
+    "title": "Business Letter Writing Style Guidelines",
+    "type": "Guidelines",
+    "description": "Provides tips for effective business letter writing, emphasizing clarity, simplicity, and professional presentation.",
+    "tags": [
+      "writing style",
+      "business letter",
+      "tips",
+      "professional communication",
+      "guidelines"
+    ],
+    "pages": "29-29"
+  },
+  {
+    "id": "business-letters/different-business-letter-formats.md",
+    "label": "Different Business Letter Formats",
+    "group": "business-letters",
+    "title": "Different Business Letter Formats",
+    "type": "Section",
+    "description": "Explains various business letter formats, including block, modified block, modified semiblock, and simplified styles with examples.",
+    "tags": [
+      "letter format",
+      "block letter",
+      "modified block",
+      "simplified letter",
+      "examples"
+    ],
+    "pages": "29-33"
+  },
+  {
+    "id": "business-letters/example-e-learning-developer-position-application-letter.md",
+    "label": "Example: E-learning Developer Position Application Letter",
+    "group": "business-letters",
+    "title": "Example: E-learning Developer Position Application Letter",
+    "type": "Example",
+    "description": "Presents an example of a business letter applying for an e-learning developer position, showcasing practical application.",
+    "tags": [
+      "example letter",
+      "job application",
+      "e-learning",
+      "correspondence",
+      "sample"
+    ],
+    "pages": "33-33"
+  },
+  {
+    "id": "business-plans/business-plan-definition-and-key-components.md",
+    "label": "Business Plan: Definition and Key Components",
+    "group": "business-plans",
+    "title": "Business Plan: Definition and Key Components",
+    "type": "Section",
+    "description": "Defines a business plan as a proposal for new or expanding businesses and lists its essential descriptive and technical elements.",
+    "tags": [
+      "business plan",
+      "definition",
+      "components",
+      "strategy",
+      "proposal"
+    ],
+    "pages": "34-35"
+  },
+  {
+    "id": "business-plans/stewart-lake-state-park-business-plan-introduction.md",
+    "label": "Stewart Lake State Park Business Plan: Introduction",
+    "group": "business-plans",
+    "title": "Stewart Lake State Park Business Plan: Introduction",
+    "type": "Section",
+    "description": "Introduces the Stewart Lake State Park business plan, detailing its submission and preparation for park management.",
+    "tags": [
+      "business plan",
+      "state park",
+      "introduction",
+      "example",
+      "management"
+    ],
+    "pages": "36-37"
+  },
+  {
+    "id": "business-plans/executive-summary-introduction-stewart-lake-state-park-business-plan.md",
+    "label": "Executive Summary/Introduction: Stewart Lake State Park Business Plan",
+    "group": "business-plans",
+    "title": "Executive Summary/Introduction: Stewart Lake State Park Business Plan",
+    "type": "Summary",
+    "description": "Outlines the purpose of the Stewart Lake State Park business plan, focusing on financial impacts for decision-making.",
+    "tags": [
+      "executive summary",
+      "business plan",
+      "introduction",
+      "financial impacts",
+      "park management"
+    ],
+    "pages": "37-37"
+  },
+  {
+    "id": "business-plans/mission-vision-values-and-objectives-stewart-lake-state-park.md",
+    "label": "Mission, Vision, Values, and Objectives: Stewart Lake State Park",
+    "group": "business-plans",
+    "title": "Mission, Vision, Values, and Objectives: Stewart Lake State Park",
+    "type": "Section",
+    "description": "Details the core mission, vision, values, and objectives guiding the management and development of Stewart Lake State Park.",
+    "tags": [
+      "mission",
+      "vision",
+      "values",
+      "objectives",
+      "state park",
+      "business plan"
+    ],
+    "pages": "37-37"
+  },
+  {
+    "id": "business-plans/market-trends-stewart-lake-state-park-business-plan.md",
+    "label": "Market Trends: Stewart Lake State Park Business Plan",
+    "group": "business-plans",
+    "title": "Market Trends: Stewart Lake State Park Business Plan",
+    "type": "Section",
+    "description": "Analyzes general trends in outdoor recreation relevant to Stewart Lake State Park, including demand and participant demographics.",
+    "tags": [
+      "market trends",
+      "outdoor recreation",
+      "leisure activities",
+      "demographics",
+      "business plan"
+    ],
+    "pages": "38-38"
+  },
+  {
+    "id": "business-plans/market-needs-demands-stewart-lake-state-park-business-plan.md",
+    "label": "Market Needs/Demands: Stewart Lake State Park Business Plan",
+    "group": "business-plans",
+    "title": "Market Needs/Demands: Stewart Lake State Park Business Plan",
+    "type": "Section",
+    "description": "Identifies specific visitor needs and demands for Stewart Lake State Park, based on feedback and trend analysis.",
+    "tags": [
+      "market needs",
+      "visitor feedback",
+      "park facilities",
+      "demand analysis",
+      "business plan"
+    ],
+    "pages": "38-39"
+  },
+  {
+    "id": "business-plans/financial-analysis-stewart-lake-state-park-business-plan.md",
+    "label": "Financial Analysis: Stewart Lake State Park Business Plan",
+    "group": "business-plans",
+    "title": "Financial Analysis: Stewart Lake State Park Business Plan",
+    "type": "Section",
+    "description": "Explains the financial evaluation methods, such as ROI and IRR, used for projects within Stewart Lake State Park.",
+    "tags": [
+      "financial analysis",
+      "roi",
+      "irr",
+      "payback period",
+      "investment",
+      "business plan"
+    ],
+    "pages": "39-39"
+  },
+  {
+    "id": "business-plans/summary-of-annual-expenses-stewart-lake-state-park.md",
+    "label": "Summary of Annual Expenses: Stewart Lake State Park",
+    "group": "business-plans",
+    "title": "Summary of Annual Expenses: Stewart Lake State Park",
+    "type": "Summary",
+    "description": "Provides a detailed summary table of current and proposed annual expenses for Stewart Lake State Park operations.",
+    "tags": [
+      "annual expenses",
+      "financial summary",
+      "budget",
+      "park operations",
+      "business plan"
+    ],
+    "pages": "40-40"
+  },
+  {
+    "id": "business-plans/success-monitoring-and-performance-measures-stewart-lake-state-park.md",
+    "label": "Success Monitoring and Performance Measures: Stewart Lake State Park",
+    "group": "business-plans",
+    "title": "Success Monitoring and Performance Measures: Stewart Lake State Park",
+    "type": "Section",
+    "description": "Outlines the performance measures and strategies used to monitor and evaluate the success of the Stewart Lake State Park plan.",
+    "tags": [
+      "success monitoring",
+      "performance measures",
+      "evaluation",
+      "strategies",
+      "business plan"
+    ],
+    "pages": "40-40"
+  },
+  {
+    "id": "business-letters/collection-letter-guidelines-and-tips.md",
+    "label": "Collection Letter: Guidelines and Tips",
+    "group": "business-letters",
+    "title": "Collection Letter: Guidelines and Tips",
+    "type": "Guidelines",
+    "description": "Offers essential tips for writing effective collection letters, focusing on clarity, specificity, and consequences for non-payment.",
+    "tags": [
+      "collection letter",
+      "debt collection",
+      "correspondence",
+      "financial communication",
+      "guidelines"
+    ],
+    "pages": "41-41"
+  },
+  {
+    "id": "business-letters/commendation-letter-guidelines-and-tips.md",
+    "label": "Commendation Letter: Guidelines and Tips",
+    "group": "business-letters",
+    "title": "Commendation Letter: Guidelines and Tips",
+    "type": "Guidelines",
+    "description": "Provides advice for writing commendation letters, emphasizing genuine, specific, and timely praise for employee performance.",
+    "tags": [
+      "commendation letter",
+      "employee recognition",
+      "praise",
+      "motivation",
+      "human resources"
+    ],
+    "pages": "42-42"
+  },
+  {
+    "id": "business-documents/commendation-letter-guide-and-example.md",
+    "label": "Commendation Letter Guide and Example",
+    "group": "business-documents",
+    "title": "Commendation Letter Guide and Example",
+    "type": "Guide",
+    "description": "Learn how to write effective commendation letters with tips and a detailed example praising an employee&#x27;s performance.",
+    "tags": [
+      "commendation letter",
+      "employee praise",
+      "business communication",
+      "writing tips",
+      "sample document"
+    ],
+    "pages": "43-44"
+  },
+  {
+    "id": "business-documents/sample-product-exchange-request-letter.md",
+    "label": "Sample Product Exchange Request Letter",
+    "group": "business-documents",
+    "title": "Sample Product Exchange Request Letter",
+    "type": "Sample Document",
+    "description": "A sample letter requesting an exchange for a purchased printer due to receiving the wrong model with different features.",
+    "tags": [
+      "exchange letter",
+      "customer service",
+      "product return",
+      "sample letter",
+      "complaint"
+    ],
+    "pages": "44-44"
+  },
+  {
+    "id": "business-documents/cover-letters-writing-tips.md",
+    "label": "Cover Letters: Writing Tips",
+    "group": "business-documents",
+    "title": "Cover Letters: Writing Tips",
+    "type": "Guide",
+    "description": "Understand the purpose of cover letters and learn essential tips for customizing them for job applications.",
+    "tags": [
+      "cover letter",
+      "job application",
+      "writing tips",
+      "employment",
+      "resume"
+    ],
+    "pages": "45-45"
+  },
+  {
+    "id": "business-documents/directives-instructions-and-tips.md",
+    "label": "Directives: Instructions and Tips",
+    "group": "business-documents",
+    "title": "Directives: Instructions and Tips",
+    "type": "Guide",
+    "description": "Learn about directives, their purpose, and key tips for writing effective memos or emails that provide instructions.",
+    "tags": [
+      "directives",
+      "memos",
+      "instructions",
+      "business communication",
+      "writing tips"
+    ],
+    "pages": "46-47"
+  },
+  {
+    "id": "business-communication/email-message-writing-best-practices.md",
+    "label": "Email Message Writing Best Practices",
+    "group": "business-communication",
+    "title": "Email Message Writing Best Practices",
+    "type": "Guide",
+    "description": "Guidelines for writing effective email messages, including using hyperlinks, active voice, and avoiding sexist language.",
+    "tags": [
+      "email writing",
+      "communication tips",
+      "email etiquette",
+      "active voice",
+      "business communication"
+    ],
+    "pages": "47-49"
+  },
+  {
+    "id": "business-documents/endorsement-letter-guide-and-example.md",
+    "label": "Endorsement Letter Guide and Example",
+    "group": "business-documents",
+    "title": "Endorsement Letter Guide and Example",
+    "type": "Guide",
+    "description": "Learn how to write an endorsement letter with essential tips and review a sample letter endorsing a professional.",
+    "tags": [
+      "endorsement letter",
+      "recommendation",
+      "writing tips",
+      "sample document",
+      "professional endorsement"
+    ],
+    "pages": "49-50"
+  },
+  {
+    "id": "business-documents/business-forms-and-notary-examples.md",
+    "label": "Business Forms and Notary Examples",
+    "group": "business-documents",
+    "title": "Business Forms and Notary Examples",
+    "type": "Guide",
+    "description": "Guidance on creating business forms, including legal writing conventions, and examples of notary forms for corporations and partnerships.",
+    "tags": [
+      "business forms",
+      "legal documents",
+      "notary form",
+      "writing conventions",
+      "partnership",
+      "corporation"
+    ],
+    "pages": "51-52"
+  },
+  {
+    "id": "business-documents/fund-raising-letter-guide-and-example.md",
+    "label": "Fund-Raising Letter Guide and Example",
+    "group": "business-documents",
+    "title": "Fund-Raising Letter Guide and Example",
+    "type": "Guide",
+    "description": "Learn how to write effective fund-raising letters with tips and review a sample letter for a school PTA initiative.",
+    "tags": [
+      "fundraising letter",
+      "nonprofit",
+      "donors",
+      "writing tips",
+      "sample document"
+    ],
+    "pages": "53-54"
+  },
+  {
+    "id": "business-documents/grant-proposal-essential-elements.md",
+    "label": "Grant Proposal Essential Elements",
+    "group": "business-documents",
+    "title": "Grant Proposal Essential Elements",
+    "type": "Guide",
+    "description": "An overview of the key components required for a comprehensive grant proposal, from cover letter to project details.",
+    "tags": [
+      "grant proposal",
+      "funding",
+      "project proposal",
+      "elements",
+      "nonprofit"
+    ],
+    "pages": "54-56"
+  },
+  {
+    "id": "business-documents/sample-grant-proposal-action-for-rural-rejuvenation.md",
+    "label": "Sample Grant Proposal: Action for Rural Rejuvenation",
+    "group": "business-documents",
+    "title": "Sample Grant Proposal: Action for Rural Rejuvenation",
+    "type": "Sample Document",
+    "description": "A detailed sample grant proposal for the &#x27;Action for Rural Rejuvenation&#x27; initiative, outlining its summary, need, goals, and organizational capacity.",
+    "tags": [
+      "grant proposal",
+      "sample document",
+      "rural development",
+      "isha foundation",
+      "project plan"
+    ],
+    "pages": "56-60"
+  },
+  {
+    "id": "instructions/how-to-access-the-preclass-webinar.md",
+    "label": "How to Access the Preclass Webinar",
+    "group": "instructions",
+    "title": "How to Access the Preclass Webinar",
+    "type": "Instruction",
+    "description": "A heading indicating instructions for accessing a preclass webinar, likely part of a larger guide or announcement.",
+    "tags": [
+      "webinar",
+      "access instructions",
+      "preclass",
+      "guide"
+    ],
+    "pages": "60-61"
+  },
+  {
+    "id": "report-writing/introductions-in-formal-reports.md",
+    "label": "Introductions in Formal Reports",
+    "group": "report-writing",
+    "title": "Introductions in Formal Reports",
+    "type": "Concept",
+    "description": "An introduction is the first section of a formal report, explaining its purpose, audience, and content.",
+    "tags": [
+      "report writing",
+      "introduction",
+      "formal report",
+      "document structure"
+    ],
+    "pages": "61-62"
+  },
+  {
+    "id": "letter-writing/inquiry-letters.md",
+    "label": "Inquiry Letters",
+    "group": "letter-writing",
+    "title": "Inquiry Letters",
+    "type": "Guide",
+    "description": "Learn how to write effective inquiry letters to request information or make a request, including key writing tips.",
+    "tags": [
+      "letter writing",
+      "inquiry",
+      "business communication",
+      "request"
+    ],
+    "pages": "62-63"
+  },
+  {
+    "id": "human-resources/job-descriptions-and-their-components.md",
+    "label": "Job Descriptions and Their Components",
+    "group": "human-resources",
+    "title": "Job Descriptions and Their Components",
+    "type": "Concept",
+    "description": "This unit defines job descriptions, outlines their typical categories, and provides a detailed example of a Training Project Manager role.",
+    "tags": [
+      "job description",
+      "human resources",
+      "recruitment",
+      "compensation",
+      "job roles"
+    ],
+    "pages": "64-66"
+  },
+  {
+    "id": "human-resources/job-offer-letter-example.md",
+    "label": "Job Offer Letter Example",
+    "group": "human-resources",
+    "title": "Job Offer Letter Example",
+    "type": "Example",
+    "description": "An example of a job offer letter detailing employment terms, salary, and responsibilities for a training developer position.",
+    "tags": [
+      "job offer",
+      "letter",
+      "employment",
+      "human resources",
+      "example"
+    ],
+    "pages": "66-66"
+  },
+  {
+    "id": "meeting-management/meeting-agendas-structure-and-example.md",
+    "label": "Meeting Agendas: Structure and Example",
+    "group": "meeting-management",
+    "title": "Meeting Agendas: Structure and Example",
+    "type": "Guide",
+    "description": "This unit explains the purpose and components of a meeting agenda, including a detailed example with participants and topics.",
+    "tags": [
+      "meeting",
+      "agenda",
+      "business communication",
+      "planning",
+      "corporate"
+    ],
+    "pages": "67-68"
+  },
+  {
+    "id": "corporate-governance/corporate-resolutions.md",
+    "label": "Corporate Resolutions",
+    "group": "corporate-governance",
+    "title": "Corporate Resolutions",
+    "type": "Concept",
+    "description": "Explains the formal structure and phrasing used for corporate resolutions, including &#x27;WHEREAS&#x27; and &#x27;RESOLVED&#x27; clauses.",
+    "tags": [
+      "corporate",
+      "resolutions",
+      "formal documents",
+      "board meetings"
+    ],
+    "pages": "68-69"
+  },
+  {
+    "id": "meeting-management/meeting-minutes-example-historical-society.md",
+    "label": "Meeting Minutes Example: Historical Society",
+    "group": "meeting-management",
+    "title": "Meeting Minutes Example: Historical Society",
+    "type": "Example",
+    "description": "An example of meeting minutes from the Historical Society of the University of Texas, detailing attendees and proceedings.",
+    "tags": [
+      "meeting minutes",
+      "historical society",
+      "university",
+      "record keeping"
+    ],
+    "pages": "69-69"
+  },
+  {
+    "id": "business-communication/memo-example-overseas-carriers-meeting.md",
+    "label": "Memo Example: Overseas Carriers Meeting",
+    "group": "business-communication",
+    "title": "Memo Example: Overseas Carriers Meeting",
+    "type": "Example",
+    "description": "An example of a memo scheduling a meeting to discuss overseas carriers for international product delivery.",
+    "tags": [
+      "memo",
+      "internal communication",
+      "meeting notification",
+      "shipping"
+    ],
+    "pages": "70-70"
+  },
+  {
+    "id": "corporate-strategy/mission-statements-and-project-bloom-example.md",
+    "label": "Mission Statements and Project Bloom Example",
+    "group": "corporate-strategy",
+    "title": "Mission Statements and Project Bloom Example",
+    "type": "Concept",
+    "description": "This unit defines mission statements, their purpose, and provides an example from Project Bloom.",
+    "tags": [
+      "mission statement",
+      "corporate strategy",
+      "organizational purpose",
+      "project bloom"
+    ],
+    "pages": "70-71"
+  },
+  {
+    "id": "corporate-communication/newsletters-and-article-writing-guidelines.md",
+    "label": "Newsletters and Article Writing Guidelines",
+    "group": "corporate-communication",
+    "title": "Newsletters and Article Writing Guidelines",
+    "type": "Guide",
+    "description": "This unit covers corporate newsletters, guidelines for writing articles, and includes an example article about a weight loss challenge.",
+    "tags": [
+      "newsletter",
+      "corporate communication",
+      "article writing",
+      "internal news",
+      "employee engagement"
+    ],
+    "pages": "71-73"
+  },
+  {
+    "id": "business-documents/newsletter-figure-what-do-you-have-to-lose.md",
+    "label": "Newsletter Figure: What Do You Have to Lose?",
+    "group": "business-documents",
+    "title": "Newsletter Figure: What Do You Have to Lose?",
+    "type": "Figure",
+    "description": "This knowledge unit presents Figure 3.42, a newsletter graphic titled &#x27;WHAT DO YOU HAVE TO LOSE?&#x27;.",
+    "tags": [
+      "newsletter",
+      "figure",
+      "marketing",
+      "document example"
+    ],
+    "pages": "73-73"
+  },
+  {
+    "id": "benefits-management/cobra-overage-process.md",
+    "label": "COBRA Overage Process",
+    "group": "benefits-management",
+    "title": "COBRA Overage Process",
+    "type": "Process Description",
+    "description": "Describes the COBRA overage process, which ensures benefits plan compliance by automatically dropping dependents at age 23.",
+    "tags": [
+      "cobra",
+      "benefits",
+      "compliance",
+      "irs",
+      "dependents"
+    ],
+    "pages": "74-74"
+  },
+  {
+    "id": "benefits-management/cobra-eligibility-for-domestic-partners-tip.md",
+    "label": "COBRA Eligibility for Domestic Partners Tip",
+    "group": "benefits-management",
+    "title": "COBRA Eligibility for Domestic Partners Tip",
+    "type": "Tip",
+    "description": "Provides a tip regarding COBRA eligibility for domestic partners, noting exceptions for retirement or long-term disability.",
+    "tags": [
+      "cobra",
+      "domestic partners",
+      "benefits",
+      "eligibility",
+      "tip"
+    ],
+    "pages": "74-74"
+  },
+  {
+    "id": "document-design/warning-notice-formatting-and-example.md",
+    "label": "Warning Notice Formatting and Example",
+    "group": "document-design",
+    "title": "Warning Notice Formatting and Example",
+    "type": "Guideline",
+    "description": "Details formatting rules for warning notices, including text style and spacing, and provides an example of a battery warning.",
+    "tags": [
+      "warning",
+      "notice",
+      "formatting",
+      "guidelines",
+      "document design"
+    ],
+    "pages": "74-75"
+  },
+  {
+    "id": "user-guidance/system-settings-caution.md",
+    "label": "System Settings Caution",
+    "group": "user-guidance",
+    "title": "System Settings Caution",
+    "type": "Caution",
+    "description": "A caution advising users not to change system settings in a multimedia course to avoid affecting its functionality.",
+    "tags": [
+      "caution",
+      "system settings",
+      "multimedia",
+      "course",
+      "warning"
+    ],
+    "pages": "75-75"
+  },
+  {
+    "id": "business-documents/permission-letter-guidelines-and-example.md",
+    "label": "Permission Letter Guidelines and Example",
+    "group": "business-documents",
+    "title": "Permission Letter Guidelines and Example",
+    "type": "Guideline",
+    "description": "Provides tips for writing permission letters, including stating purpose, reasons, next steps, and effective dates, with an example.",
+    "tags": [
+      "permission letter",
+      "authorization",
+      "approval",
+      "business writing",
+      "document example"
+    ],
+    "pages": "76-77"
+  },
+  {
+    "id": "legal-documents/photo-image-grant-of-rights-and-release.md",
+    "label": "Photo Image Grant of Rights and Release",
+    "group": "legal-documents",
+    "title": "Photo Image Grant of Rights and Release",
+    "type": "Legal Document",
+    "description": "A legal document granting rights and release for the use of a photo image, acknowledging consideration and defining terms.",
+    "tags": [
+      "photo rights",
+      "image release",
+      "legal document",
+      "grant of rights",
+      "copyright"
+    ],
+    "pages": "77-77"
+  },
+  {
+    "id": "corporate-governance/policies-rules-and-guidelines-definitions.md",
+    "label": "Policies, Rules, and Guidelines Definitions",
+    "group": "corporate-governance",
+    "title": "Policies, Rules, and Guidelines Definitions",
+    "type": "Definition",
+    "description": "Defines policies, rules, and guidelines, outlining their formality, scope, approval processes, and consequences of violation.",
+    "tags": [
+      "policies",
+      "rules",
+      "guidelines",
+      "corporate governance",
+      "definitions"
+    ],
+    "pages": "78-79"
+  },
+  {
+    "id": "benefits-management/cobra-benefits-entitlement-criteria.md",
+    "label": "COBRA Benefits Entitlement Criteria",
+    "group": "benefits-management",
+    "title": "COBRA Benefits Entitlement Criteria",
+    "type": "Eligibility Criteria",
+    "description": "Outlines the three elements for qualifying for COBRA benefits: plan criteria, qualified beneficiaries, and qualifying events.",
+    "tags": [
+      "cobra",
+      "benefits",
+      "eligibility",
+      "qualified beneficiaries",
+      "qualifying events"
+    ],
+    "pages": "79-80"
+  }
+];
+        const edgesData = [
+  {
+    "from": "document-examples/sample-abstract-u-s-air-force-research.md",
+    "to": "document-types/abstracts-definition-and-types.md",
+    "label": "is_example_of",
+    "arrows": "to"
+  },
+  {
+    "from": "document-examples/sample-summary-gray-wolf-experimental-populations.md",
+    "to": "document-types/abstracts-definition-and-types.md",
+    "label": "is_related_to",
+    "arrows": "to"
+  },
+  {
+    "from": "corporate-documents/annual-report-illustrative-figures.md",
+    "to": "corporate-documents/annual-report-definition-and-key-sections.md",
+    "label": "illustrates",
+    "arrows": "to"
+  },
+  {
+    "from": "marketing-materials/brochures-illustrative-figures.md",
+    "to": "marketing-materials/brochures-definition-and-types.md",
+    "label": "illustrates",
+    "arrows": "to"
+  },
+  {
+    "from": "business-letters/business-letter-overview-and-key-parts.md",
+    "to": "business-letters/business-letter-writing-style-guidelines.md",
+    "label": "describes",
+    "arrows": "to"
+  },
+  {
+    "from": "business-letters/business-letter-writing-style-guidelines.md",
+    "to": "business-letters/business-letter-overview-and-key-parts.md",
+    "label": "related_to",
+    "arrows": "to"
+  },
+  {
+    "from": "business-letters/different-business-letter-formats.md",
+    "to": "business-letters/business-letter-overview-and-key-parts.md",
+    "label": "related_to",
+    "arrows": "to"
+  },
+  {
+    "from": "business-letters/example-e-learning-developer-position-application-letter.md",
+    "to": "business-letters/different-business-letter-formats.md",
+    "label": "example_of",
+    "arrows": "to"
+  },
+  {
+    "from": "business-plans/stewart-lake-state-park-business-plan-introduction.md",
+    "to": "business-plans/business-plan-definition-and-key-components.md",
+    "label": "example_of",
+    "arrows": "to"
+  },
+  {
+    "from": "business-plans/executive-summary-introduction-stewart-lake-state-park-business-plan.md",
+    "to": "business-plans/stewart-lake-state-park-business-plan-introduction.md",
+    "label": "part_of",
+    "arrows": "to"
+  },
+  {
+    "from": "business-plans/mission-vision-values-and-objectives-stewart-lake-state-park.md",
+    "to": "business-plans/stewart-lake-state-park-business-plan-introduction.md",
+    "label": "part_of",
+    "arrows": "to"
+  },
+  {
+    "from": "business-plans/market-trends-stewart-lake-state-park-business-plan.md",
+    "to": "business-plans/stewart-lake-state-park-business-plan-introduction.md",
+    "label": "part_of",
+    "arrows": "to"
+  },
+  {
+    "from": "business-plans/market-needs-demands-stewart-lake-state-park-business-plan.md",
+    "to": "business-plans/stewart-lake-state-park-business-plan-introduction.md",
+    "label": "part_of",
+    "arrows": "to"
+  },
+  {
+    "from": "business-plans/financial-analysis-stewart-lake-state-park-business-plan.md",
+    "to": "business-plans/stewart-lake-state-park-business-plan-introduction.md",
+    "label": "part_of",
+    "arrows": "to"
+  },
+  {
+    "from": "business-plans/summary-of-annual-expenses-stewart-lake-state-park.md",
+    "to": "business-plans/stewart-lake-state-park-business-plan-introduction.md",
+    "label": "part_of",
+    "arrows": "to"
+  },
+  {
+    "from": "business-plans/summary-of-annual-expenses-stewart-lake-state-park.md",
+    "to": "business-plans/financial-analysis-stewart-lake-state-park-business-plan.md",
+    "label": "related_to",
+    "arrows": "to"
+  },
+  {
+    "from": "business-plans/success-monitoring-and-performance-measures-stewart-lake-state-park.md",
+    "to": "business-plans/stewart-lake-state-park-business-plan-introduction.md",
+    "label": "part_of",
+    "arrows": "to"
+  },
+  {
+    "from": "business-documents/sample-grant-proposal-action-for-rural-rejuvenation.md",
+    "to": "business-documents/grant-proposal-essential-elements.md",
+    "label": "example_of",
+    "arrows": "to"
+  },
+  {
+    "from": "benefits-management/cobra-overage-process.md",
+    "to": "benefits-management/cobra-eligibility-for-domestic-partners-tip.md",
+    "label": "related",
+    "arrows": "to"
+  },
+  {
+    "from": "benefits-management/cobra-overage-process.md",
+    "to": "benefits-management/cobra-benefits-entitlement-criteria.md",
+    "label": "related",
+    "arrows": "to"
+  },
+  {
+    "from": "benefits-management/cobra-eligibility-for-domestic-partners-tip.md",
+    "to": "benefits-management/cobra-overage-process.md",
+    "label": "related",
+    "arrows": "to"
+  },
+  {
+    "from": "benefits-management/cobra-eligibility-for-domestic-partners-tip.md",
+    "to": "benefits-management/cobra-benefits-entitlement-criteria.md",
+    "label": "related",
+    "arrows": "to"
+  },
+  {
+    "from": "benefits-management/cobra-benefits-entitlement-criteria.md",
+    "to": "benefits-management/cobra-overage-process.md",
+    "label": "related",
+    "arrows": "to"
+  },
+  {
+    "from": "benefits-management/cobra-benefits-entitlement-criteria.md",
+    "to": "benefits-management/cobra-eligibility-for-domestic-partners-tip.md",
+    "label": "related",
+    "arrows": "to"
+  }
+];
+
+        // Dynamic color palette — automatically assigns colors to all categories
+        const COLOR_PALETTE = [
+            "#ef4444", "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b",
+            "#ec4899", "#14b8a6", "#f97316", "#06b6d4", "#a855f7",
+            "#84cc16", "#e11d48", "#0ea5e9", "#d946ef", "#22d3ee"
+        ];
+
+        const uniqueGroups = [...new Set(nodesData.map(n => n.group))];
+        const groupColors = {};
+        uniqueGroups.forEach((group, index) => {
+            groupColors[group] = COLOR_PALETTE[index % COLOR_PALETTE.length];
+        });
+
+        // Render Legend
+        const legendContainer = document.getElementById('legend-items');
+        uniqueGroups.forEach(group => {
+            const color = groupColors[group];
+            const item = document.createElement('div');
+            item.className = 'legend-item';
+            const label = group.replace(/-/g, ' ').toUpperCase();
+            item.innerHTML = `
+                <div class="legend-color" style="background-color: ${color}"></div>
+                <span>${label}</span>
+            `;
+            legendContainer.appendChild(item);
+        });
+
+        // Stats bar
+        document.getElementById('stats-nodes').textContent = `${nodesData.length} concepts`;
+        document.getElementById('stats-edges').textContent = `${edgesData.length} links`;
+        document.getElementById('stats-groups').textContent = `${uniqueGroups.length} categories`;
+
+        // Format nodes for Vis.js
+        const visNodes = new vis.DataSet(nodesData.map(node => {
+            const color = groupColors[node.group] || '#6b7280';
+            return {
+                id: node.id,
+                label: node.label,
+                color: {
+                    background: color,
+                    border: color,
+                    highlight: {
+                        background: color,
+                        border: '#ffffff'
+                    }
+                },
+                font: {
+                    color: '#ffffff',
+                    size: 14
+                },
+                borderWidth: 2,
+                size: 25,
+                shape: 'dot',
+                shadow: {
+                    enabled: true,
+                    color: 'rgba(0,0,0,0.5)',
+                    size: 5
+                }
+            };
+        }));
+
+        const visEdges = new vis.DataSet(edgesData.map(edge => {
+            return {
+                from: edge.from,
+                to: edge.to,
+                arrows: 'to',
+                color: {
+                    color: '#4b5563',
+                    highlight: '#3b82f6'
+                },
+                width: 1.5,
+                smooth: {
+                    type: 'cubicBezier',
+                    forceDirection: 'none',
+                    roundness: 0.5
+                }
+            };
+        }));
+
+        const container = document.getElementById('network');
+        const data = {
+            nodes: visNodes,
+            edges: visEdges
+        };
+
+        const options = {
+            physics: {
+                forceAtlas2Based: {
+                    gravitationalConstant: -50,
+                    centralGravity: 0.01,
+                    springLength: 100,
+                    springConstant: 0.08
+                },
+                solver: 'forceAtlas2Based',
+                stabilization: {
+                    iterations: 150
+                }
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 200
+            }
+        };
+
+        const network = new vis.Network(container, data, options);
+
+        // Sidebar detail view on click
+        network.on("selectNode", function (params) {
+            const nodeId = params.nodes[0];
+            const node = nodesData.find(n => n.id === nodeId);
+            if (!node) return;
+
+            const tagsHtml = node.tags.map(t => `<span class="tag-pill">${t}</span>`).join('') || '<span style="color:var(--text-muted);">None</span>';
+
+            document.getElementById('details').innerHTML = `
+                <div class="concept-title">${node.title}</div>
+                <div class="concept-meta">${node.type}</div>
+                
+                <div class="info-label">Category Group</div>
+                <div class="info-value">${node.group.toUpperCase()}</div>
+
+                <div class="info-label">Source PDF Pages</div>
+                <div class="info-value">Pages ${node.pages}</div>
+
+                <div class="info-label">Description</div>
+                <div class="info-value" style="color:#e5e7eb;">${node.description}</div>
+
+                <div class="info-label">Tags</div>
+                <div style="margin-top: 6px;">${tagsHtml}</div>
+
+                <div class="info-label">Bundle Path</div>
+                <div class="info-value" style="font-family: monospace; font-size: 12px; word-break: break-all; margin-top: 4px; padding: 6px; background:#1f2937; border-radius:4px; border:1px solid var(--border-color);">${node.id}</div>
+            `;
+        });
+
+        network.on("deselectNode", function () {
+            document.getElementById('details').innerHTML = `
+                <div class="welcome-msg">
+                    <h3>Sample Business Documents</h3>
+                    <p style="margin-top: 10px;">Click any concept node in the network to view its structured detail panel and relationships.</p>
+                </div>
+            `;
+        });
+
+        // Search feature
+        document.getElementById('search').addEventListener('input', function (e) {
+            const query = e.target.value.toLowerCase().trim();
+            if (!query) {
+                // Reset styling
+                nodesData.forEach(n => {
+                    visNodes.update({ id: n.id, opacity: 1.0 });
+                });
+                return;
+            }
+
+            nodesData.forEach(n => {
+                const matches = n.title.toLowerCase().includes(query) || 
+                                n.tags.some(t => t.toLowerCase().includes(query)) ||
+                                n.description.toLowerCase().includes(query);
+                visNodes.update({
+                    id: n.id,
+                    opacity: matches ? 1.0 : 0.15
+                });
+            });
+        });
+    </script>
+</body>
+</html>

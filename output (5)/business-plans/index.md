@@ -1,0 +1,11 @@
+# Business Plans
+
+* [Business Plan: Definition and Key Components](business-plan-definition-and-key-components.md) - Defines a business plan as a proposal for new or expanding businesses and lists its essential descriptive and technical elements.
+* [Stewart Lake State Park Business Plan: Introduction](stewart-lake-state-park-business-plan-introduction.md) - Introduces the Stewart Lake State Park business plan, detailing its submission and preparation for park management.
+* [Executive Summary/Introduction: Stewart Lake State Park Business Plan](executive-summary-introduction-stewart-lake-state-park-business-plan.md) - Outlines the purpose of the Stewart Lake State Park business plan, focusing on financial impacts for decision-making.
+* [Mission, Vision, Values, and Objectives: Stewart Lake State Park](mission-vision-values-and-objectives-stewart-lake-state-park.md) - Details the core mission, vision, values, and objectives guiding the management and development of Stewart Lake State Park.
+* [Market Trends: Stewart Lake State Park Business Plan](market-trends-stewart-lake-state-park-business-plan.md) - Analyzes general trends in outdoor recreation relevant to Stewart Lake State Park, including demand and participant demographics.
+* [Market Needs/Demands: Stewart Lake State Park Business Plan](market-needs-demands-stewart-lake-state-park-business-plan.md) - Identifies specific visitor needs and demands for Stewart Lake State Park, based on feedback and trend analysis.
+* [Financial Analysis: Stewart Lake State Park Business Plan](financial-analysis-stewart-lake-state-park-business-plan.md) - Explains the financial evaluation methods, such as ROI and IRR, used for projects within Stewart Lake State Park.
+* [Summary of Annual Expenses: Stewart Lake State Park](summary-of-annual-expenses-stewart-lake-state-park.md) - Provides a detailed summary table of current and proposed annual expenses for Stewart Lake State Park operations.
+* [Success Monitoring and Performance Measures: Stewart Lake State Park](success-monitoring-and-performance-measures-stewart-lake-state-park.md) - Outlines the performance measures and strategies used to monitor and evaluate the success of the Stewart Lake State Park plan.
