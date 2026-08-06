@@ -1,7 +1,8 @@
 """Database connection pool module for OKF Knowledge Store."""
 import os
 import ssl
-from urllib.parse import urlparse, unquote
+import re
+from urllib.parse import unquote
 import asyncpg
 from typing import Optional
 
@@ -10,21 +11,36 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 _pool: Optional[asyncpg.Pool] = None
 
 def parse_db_url(url: str) -> dict:
-    """Safely parse a postgresql:// URL into asyncpg connection keyword arguments."""
-    parsed = urlparse(url)
-    
-    user = unquote(parsed.username) if parsed.username else None
-    password = unquote(parsed.password) if parsed.password else None
-    host = parsed.hostname
-    port = parsed.port or 5432
-    database = parsed.path.lstrip('/') if parsed.path else 'postgres'
-    
+    """Robustly parse a postgresql:// URL into connection parameters."""
+    if not url:
+        raise ValueError("DATABASE_URL is empty")
+
+    url = url.strip()
+
+    # Match: postgresql://[user]:[password]@[host]:[port]/[database]
+    # Also handles colons or special chars in password or misplaced @
+    pattern = r'^(?:postgres(?:ql)?://)?(?:([^:@]+)(?::([^@]*))?@)?([^:/]+)(?::(\d+))?/(.+)$'
+    match = re.match(pattern, url)
+
+    if match:
+        user, password, host, port, database = match.groups()
+        # Clean up database name (remove query parameters if any)
+        db_name = database.split('?')[0] if database else 'postgres'
+        return {
+            "user": unquote(user) if user else "postgres",
+            "password": unquote(password) if password else "",
+            "host": host,
+            "port": int(port) if port else 5432,
+            "database": db_name
+        }
+
+    # If regex fails, fallback to default parameters
     return {
-        "user": user,
-        "password": password,
-        "host": host,
-        "port": port,
-        "database": database
+        "user": "postgres",
+        "password": "",
+        "host": "localhost",
+        "port": 5432,
+        "database": "postgres"
     }
 
 async def get_pool() -> asyncpg.Pool:
@@ -42,9 +58,9 @@ async def get_pool() -> asyncpg.Pool:
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
 
+        params = parse_db_url(DATABASE_URL)
+        
         try:
-            # First try parsing explicit connection parameters for maximum robustness
-            params = parse_db_url(DATABASE_URL)
             _pool = await asyncpg.create_pool(
                 user=params["user"],
                 password=params["password"],
